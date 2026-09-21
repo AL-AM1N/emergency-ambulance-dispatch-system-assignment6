@@ -267,10 +267,7 @@ const googleLogin = async (payload: IGoogleLoginPayload) => {
 	}
 
 	if (!googleIdTokenPayload.name) {
-		throw new AppError(
-			httpStatus.BAD_REQUEST,
-			"Google User Name Not Found",
-		);
+		throw new AppError(httpStatus.BAD_REQUEST, "Google User Name Not Found");
 	}
 
 	const googleEmail = googleIdTokenPayload.email.trim().toLowerCase();
