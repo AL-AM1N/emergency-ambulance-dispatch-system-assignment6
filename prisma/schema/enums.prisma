@@ -1,0 +1,16 @@
+enum Role {
+  ADMIN
+  DRIVER
+  PATIENT
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum AuthProvider {
+  GOOGLE
+  CREDENTIAL
+}
