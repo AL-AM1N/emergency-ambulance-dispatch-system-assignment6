@@ -17,6 +17,7 @@
     "author": "MD. AL-AMIN",
     "license": "ISC",
     "type": "module",
+    "onlyBuiltDependencies": ["prisma", "@prisma/engines", "esbuild"],
     "engines": {
         "node": ">=20"
     },
