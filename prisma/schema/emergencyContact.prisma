@@ -1,0 +1,13 @@
+model EmergencyContact {
+  id          String   @id @default(uuid(7))
+  name        String
+  phone       String
+  description String?
+  type        String   @default("GENERAL")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive], name: "idx_emergencyContact_isActive")
+  @@map("emergency_contacts")
+}
