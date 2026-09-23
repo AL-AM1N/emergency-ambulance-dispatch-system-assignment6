@@ -1,0 +1,21 @@
+model Payment {
+  id                    String        @id @default(uuid())
+  transactionId         String?       @unique
+  amount                Float
+  method                PaymentMethod
+  status                PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+
+  tripId String          @unique
+  trip   EmergencyRequest @relation(fields: [tripId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId], name: "idx_payment_userId")
+  @@index([tripId], name: "idx_payment_tripId")
+  @@index([status], name: "idx_payment_status")
+  @@map("payments")
+}

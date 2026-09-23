@@ -1,0 +1,24 @@
+model Ambulance {
+  id                String          @id @default(uuid(7))
+  vehicleNumber     String          @unique
+  status            AmbulanceStatus @default(AVAILABLE)
+  currentLatitude   Float?
+  currentLongitude  Float?
+  isDeleted         Boolean         @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  ambulanceTypeId String
+  ambulanceType   AmbulanceType @relation(fields: [ambulanceTypeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  driverId String? @unique
+  driver   Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  emergencyRequests EmergencyRequest[]
+
+  @@index([status], name: "idx_ambulance_status")
+  @@index([isDeleted], name: "idx_ambulance_isDeleted")
+  @@index([ambulanceTypeId], name: "idx_ambulance_ambulanceTypeId")
+  @@map("ambulances")
+}

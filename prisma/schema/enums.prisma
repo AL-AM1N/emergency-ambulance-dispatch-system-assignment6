@@ -14,3 +14,56 @@ enum AuthProvider {
   GOOGLE
   CREDENTIAL
 }
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum EmergencyType {
+  MEDICAL
+  ACCIDENT
+  FIRE
+  CARDIAC
+  TRAUMA
+  OBSTETRIC
+  OTHER
+}
+
+enum TripStatus {
+  PENDING
+  ASSIGNED
+  ACCEPTED
+  EN_ROUTE
+  PICKED_UP
+  HOSPITAL_ARRIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum AmbulanceStatus {
+  AVAILABLE
+  BUSY
+  MAINTENANCE
+  INACTIVE
+}
+
+enum HospitalType {
+  GENERAL
+  EMERGENCY
+  TRAUMA
+  SPECIALIZED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentMethod {
+  STRIPE
+  SSLCOMMERZ
+}

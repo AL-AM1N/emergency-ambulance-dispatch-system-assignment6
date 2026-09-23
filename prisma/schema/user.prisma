@@ -17,6 +17,8 @@ model User {
   updatedAt          DateTime     @updatedAt
   patient            Patient?
   driver             Driver?
+  notifications      Notification[]
+  payments           Payment[]
 
   @@unique([email])
   @@map("users")

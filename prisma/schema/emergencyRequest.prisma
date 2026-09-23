@@ -1,0 +1,46 @@
+model EmergencyRequest {
+  id               String        @id @default(uuid(7))
+  patientName      String
+  patientContact   String
+  emergencyType    EmergencyType
+  priority         Priority      @default(MEDIUM)
+  pickupLocation   String
+  pickupLatitude   Float?
+  pickupLongitude  Float?
+  additionalNote   String?
+  status           TripStatus    @default(PENDING)
+  fare             Float?
+  distanceKm       Float?
+  assignedAt       DateTime?
+  acceptedAt       DateTime?
+  pickedUpAt       DateTime?
+  arrivedAt        DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  cancelledReason  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  ambulanceId String?
+  ambulance   Ambulance? @relation(fields: [ambulanceId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  driverId String?
+  driver   Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  hospitalId String?
+  hospital   Hospital? @relation(fields: [hospitalId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  payment Payment?
+
+  @@index([patientId], name: "idx_emergencyRequest_patientId")
+  @@index([driverId], name: "idx_emergencyRequest_driverId")
+  @@index([ambulanceId], name: "idx_emergencyRequest_ambulanceId")
+  @@index([hospitalId], name: "idx_emergencyRequest_hospitalId")
+  @@index([status], name: "idx_emergencyRequest_status")
+  @@index([priority], name: "idx_emergencyRequest_priority")
+  @@index([createdAt], name: "idx_emergencyRequest_createdAt")
+  @@map("emergency_requests")
+}

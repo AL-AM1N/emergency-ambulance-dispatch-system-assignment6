@@ -1,0 +1,22 @@
+model Hospital {
+  id            String       @id @default(uuid(7))
+  name          String
+  address       String
+  contactNumber String?
+  email         String?
+  type          HospitalType @default(GENERAL)
+  latitude      Float?
+  longitude     Float?
+  isActive      Boolean      @default(true)
+  isDeleted     Boolean      @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  emergencyRequests EmergencyRequest[]
+
+  @@index([isActive], name: "idx_hospital_isActive")
+  @@index([isDeleted], name: "idx_hospital_isDeleted")
+  @@index([type], name: "idx_hospital_type")
+  @@map("hospitals")
+}
