@@ -7,6 +7,7 @@
         "dev": "tsx watch src/server.ts",
         "build": "tsup",
         "start": "node dist/server.js",
+        "seed": "tsx scripts/seed.ts",
         "format:check": "npx @biomejs/biome format ./src",
         "format:fix": "npx @biomejs/biome format --write ./src",
         "lint:check": "npx @biomejs/biome lint ./src",
@@ -16,6 +17,9 @@
     "author": "MD. AL-AMIN",
     "license": "ISC",
     "type": "module",
+    "engines": {
+        "node": ">=20"
+    },
     "dependencies": {
         "@prisma/adapter-pg": "^7.9.1",
         "@prisma/client": "^7.9.1",

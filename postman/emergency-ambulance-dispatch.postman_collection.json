@@ -1,0 +1,1111 @@
+{
+	"info": {
+		"name": "Emergency Ambulance Dispatch System",
+		"description": "Full API test suite for the Emergency Ambulance Dispatch System backend.\n\nWorkflow (run folders in order):\n1. Base - health check\n2. Public - fetch seeded ambulance types & hospitals (captures IDs)\n3. Auth - register patient & driver, login admin (captures tokens)\n4. Admin - Infrastructure - create ambulance, hospital, manage drivers\n5. Patient - Create Request - create an emergency request\n6. Admin - Dispatch - priority change, assign ambulance, select hospital\n7. Driver - Complete Trip - accept, EN_ROUTE -> PICKED_UP -> HOSPITAL_ARRIVED -> COMPLETED\n8. Patient - Verify & Pay - history, notifications, cancel guard\n9. Payment - Stripe - create intent, confirm\n10. Admin - Dashboard & Reports\n11. Negative / RBAC Tests\n\nAuth: login/register return accessToken in data.accessToken; the collection auto-stores these into the variables adminToken / patientToken / driverToken and injects them via the Authorization header of each protected request.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:5000/api/v1" },
+		{ "key": "adminToken", "value": "" },
+		{ "key": "patientToken", "value": "" },
+		{ "key": "driverToken", "value": "" },
+		{ "key": "ambulanceTypeId", "value": "" },
+		{ "key": "hospitalId", "value": "" },
+		{ "key": "customHospitalId", "value": "" },
+		{ "key": "driverId", "value": "" },
+		{ "key": "ambulanceId", "value": "" },
+		{ "key": "requestId", "value": "" },
+		{ "key": "tripId", "value": "" },
+		{ "key": "notificationId", "value": "" },
+		{ "key": "paymentId", "value": "" },
+		{ "key": "clientSecret", "value": "" },
+		{ "key": "paymentIntentId", "value": "" }
+	],
+	"item": [
+		{
+			"name": "0 - Base",
+			"item": [
+				{
+					"name": "GET / health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/../"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('health ok', () => pm.expect(pm.response.code).to.eql(200));"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "1 - Public",
+			"item": [
+				{
+					"name": "GET /public/ambulance-types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/public/ambulance-types"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('200', () => pm.expect(pm.response.code).to.eql(200));",
+									"pm.test('has types', () => pm.expect(j.data.length).to.be.at.least(1));",
+									"pm.collectionVariables.set('ambulanceTypeId', j.data[0].id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /public/hospitals",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/public/hospitals"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('200', () => pm.expect(pm.response.code).to.eql(200));",
+									"pm.collectionVariables.set('hospitalId', j.data[0].id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /public/hospitals/:id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/public/hospitals/{{hospitalId}}"
+					}
+				},
+				{
+					"name": "GET /public/emergency-info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/public/emergency-info"
+					}
+				}
+			]
+		},
+		{
+			"name": "2 - Auth",
+			"item": [
+				{
+					"name": "POST /auth/register/patient",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Nadia Rahman\",\n  \"email\": \"patient1@test.com\",\n  \"password\": \"Pass@1234\",\n  \"patient\": {\n    \"contactNumber\": \"01712345678\",\n    \"address\": \"Dhanmondi 27, Dhaka\"\n  }\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/auth/register/patient"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('201', () => pm.expect(pm.response.code).to.eql(201));",
+									"pm.collectionVariables.set('patientToken', j.data.accessToken);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /auth/register/driver",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Karim Ahmed\",\n  \"email\": \"driver1@test.com\",\n  \"password\": \"Pass@1234\",\n  \"contactNumber\": \"01812345678\",\n  \"licenseNumber\": \"DL-2026-1142\",\n  \"vehicleNumber\": \"DHAKA-METRO-11-2299\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/auth/register/driver"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('201', () => pm.expect(pm.response.code).to.eql(201));",
+									"pm.collectionVariables.set('driverToken', j.data.accessToken);",
+									"pm.collectionVariables.set('driverId', j.data.driver.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /auth/login (admin)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@ambulancedispatch.com\",\n  \"password\": \"Admin@12345\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/auth/login"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('200', () => pm.expect(pm.response.code).to.eql(200));",
+									"pm.collectionVariables.set('adminToken', j.data.accessToken);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /auth/login (patient)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"patient1@test.com\",\n  \"password\": \"Pass@1234\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/auth/login"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('200', () => pm.expect(pm.response.code).to.eql(200));",
+									"pm.collectionVariables.set('patientToken', j.data.accessToken);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /auth/me",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/auth/me"
+					}
+				},
+				{
+					"name": "POST /auth/refresh-token",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/auth/refresh-token"
+					}
+				},
+				{
+					"name": "POST /auth/logout",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/auth/logout"
+					}
+				}
+			]
+		},
+		{
+			"name": "3 - Admin - Infrastructure",
+			"item": [
+				{
+					"name": "POST /admin/ambulances",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vehicleNumber\": \"DHAKA-METRO-11-2299\",\n  \"ambulanceTypeId\": \"{{ambulanceTypeId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"currentLatitude\": 23.8103,\n  \"currentLongitude\": 90.4125\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/ambulances"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('201', () => pm.expect(pm.response.code).to.eql(201));",
+									"pm.collectionVariables.set('ambulanceId', j.data.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /admin/ambulances?page=1&limit=10",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/ambulances?page=1&limit=10"
+					}
+				},
+				{
+					"name": "GET /admin/ambulances/:id",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/ambulances/{{ambulanceId}}"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('status AVAILABLE', () => pm.expect(j.data.status).to.eql('AVAILABLE'));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PATCH /admin/ambulances/:id (MAINTENANCE)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"MAINTENANCE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/ambulances/{{ambulanceId}}"
+					}
+				},
+				{
+					"name": "PATCH /admin/ambulances/:id (back to AVAILABLE)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"AVAILABLE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/ambulances/{{ambulanceId}}"
+					}
+				},
+				{
+					"name": "POST /admin/hospitals",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dhaka Medical College Hospital\",\n  \"address\": \"Suhrawardy Udyan Rd, Shahbag\",\n  \"contactNumber\": \"01710000000\",\n  \"email\": \"info@dmc.example.com\",\n  \"type\": \"GENERAL\",\n  \"latitude\": 23.7393,\n  \"longitude\": 90.3852\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/hospitals"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('201', () => pm.expect(pm.response.code).to.eql(201));",
+									"pm.collectionVariables.set('customHospitalId', j.data.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PATCH /admin/hospitals/:id",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"EMERGENCY\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/hospitals/{{customHospitalId}}"
+					}
+				},
+				{
+					"name": "GET /admin/drivers",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/drivers?page=1&limit=10"
+					}
+				},
+				{
+					"name": "GET /admin/drivers/:id",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/drivers/{{driverId}}"
+					}
+				},
+				{
+					"name": "PATCH /admin/drivers/:id/status (BLOCKED)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"BLOCKED\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/drivers/{{driverId}}/status"
+					}
+				},
+				{
+					"name": "PATCH /admin/drivers/:id/status (ACTIVE)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"ACTIVE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/drivers/{{driverId}}/status"
+					}
+				}
+			]
+		},
+		{
+			"name": "4 - Patient - Create Request",
+			"item": [
+				{
+					"name": "POST /patient/emergency-requests",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{patientToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patientName\": \"Nadia Rahman\",\n  \"patientContact\": \"01712345678\",\n  \"emergencyType\": \"CARDIAC\",\n  \"priority\": \"CRITICAL\",\n  \"pickupLocation\": \"House 12, Road 27, Dhanmondi\",\n  \"pickupLatitude\": 23.7467,\n  \"pickupLongitude\": 90.3746,\n  \"additionalNote\": \"Chest pain, need urgent care\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/patient/emergency-requests"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('201', () => pm.expect(pm.response.code).to.eql(201));",
+									"pm.test('status PENDING', () => pm.expect(j.data.status).to.eql('PENDING'));",
+									"pm.collectionVariables.set('requestId', j.data.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /patient/emergency-requests",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/patient/emergency-requests"
+					}
+				},
+				{
+					"name": "GET /patient/emergency-requests/:id",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/patient/emergency-requests/{{requestId}}"
+					}
+				}
+			]
+		},
+		{
+			"name": "5 - Admin - Dispatch",
+			"item": [
+				{
+					"name": "GET /admin/emergency-requests",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/emergency-requests?priority=CRITICAL&page=1&limit=10"
+					}
+				},
+				{
+					"name": "PATCH /admin/emergency-requests/:id/priority",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"priority\": \"HIGH\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/emergency-requests/{{requestId}}/priority"
+					}
+				},
+				{
+					"name": "POST /admin/emergency-requests/:id/assign",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ambulanceId\": \"{{ambulanceId}}\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/emergency-requests/{{requestId}}/assign"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('status ASSIGNED', () => pm.expect(j.data.status).to.eql('ASSIGNED'));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST assign again (expect 400)",
+					"description": "Negative test: a request can only be assigned once.",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ambulanceId\": \"{{ambulanceId}}\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/emergency-requests/{{requestId}}/assign"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('400', () => pm.expect(pm.response.code).to.eql(400));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PATCH /admin/emergency-requests/:id/hospital",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{adminToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"hospitalId\": \"{{hospitalId}}\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/admin/emergency-requests/{{requestId}}/hospital"
+					}
+				}
+			]
+		},
+		{
+			"name": "6 - Driver - Complete Trip",
+			"item": [
+				{
+					"name": "GET /driver/notifications",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+						"url": "{{base_url}}/driver/notifications"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('has assign notification', () => pm.expect(j.data.length).to.be.at.least(1));",
+									"if (j.data.length) { pm.collectionVariables.set('notificationId', j.data[0].id); }"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PATCH /driver/notifications/:id/read",
+					"request": {
+						"method": "PATCH",
+						"header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+						"url": "{{base_url}}/driver/notifications/{{notificationId}}/read"
+					}
+				},
+				{
+					"name": "GET /driver/trips/current",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+						"url": "{{base_url}}/driver/trips/current"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('status ASSIGNED', () => pm.expect(j.data.status).to.eql('ASSIGNED'));",
+									"pm.collectionVariables.set('tripId', j.data.id);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /driver/trips/:id/accept",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+						"url": "{{base_url}}/driver/trips/{{tripId}}/accept"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('status ACCEPTED', () => pm.expect(j.data.status).to.eql('ACCEPTED'));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PATCH /driver/availability (false while active, expect 400)",
+					"description": "Negative test: a driver on an active trip cannot go offline.",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{driverToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isAvailable\": false\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/driver/availability"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('400', () => pm.expect(pm.response.code).to.eql(400));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PATCH /driver/trips/:id/status (EN_ROUTE)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{driverToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"EN_ROUTE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/driver/trips/{{tripId}}/status"
+					}
+				},
+				{
+					"name": "PATCH /driver/trips/:id/status (PICKED_UP)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{driverToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"PICKED_UP\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/driver/trips/{{tripId}}/status"
+					}
+				},
+				{
+					"name": "PATCH /driver/trips/:id/status (HOSPITAL_ARRIVED)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{driverToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"HOSPITAL_ARRIVED\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/driver/trips/{{tripId}}/status"
+					}
+				},
+				{
+					"name": "PATCH /driver/trips/:id/status (COMPLETED)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{driverToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"COMPLETED\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/driver/trips/{{tripId}}/status"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('status COMPLETED', () => pm.expect(j.data.status).to.eql('COMPLETED'));",
+									"pm.test('fare computed', () => pm.expect(j.data.fare).to.be.above(0));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /driver/profile",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+						"url": "{{base_url}}/driver/profile"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('available again', () => pm.expect(j.data.isAvailable).to.eql(true));"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "7 - Patient - Verify & Pay",
+			"item": [
+				{
+					"name": "GET /patient/trips?page=1&limit=10",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/patient/trips?page=1&limit=10"
+					}
+				},
+				{
+					"name": "GET /patient/trips/:id",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/patient/trips/{{tripId}}"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('has hospital', () => pm.expect(j.data.hospital).to.exist);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /patient/notifications",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/patient/notifications"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"if (j.data.length) { pm.collectionVariables.set('notificationId', j.data[0].id); }"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PATCH /patient/notifications/:id/read",
+					"request": {
+						"method": "PATCH",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/patient/notifications/{{notificationId}}/read"
+					}
+				},
+				{
+					"name": "PATCH /patient/emergency-requests/:id/cancel (expect 400)",
+					"description": "Negative test: a completed trip cannot be cancelled.",
+					"request": {
+						"method": "PATCH",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/patient/emergency-requests/{{requestId}}/cancel"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('4xx', () => pm.expect(pm.response.code).to.be.at.least(400));"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "8 - Payment - Stripe",
+			"item": [
+				{
+					"name": "POST /payment/create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{patientToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"method\": \"STRIPE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/payment/create"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('200', () => pm.expect(pm.response.code).to.eql(200));",
+									"pm.test('has clientSecret', () => pm.expect(j.data.clientSecret).to.be.a('string'));",
+									"pm.collectionVariables.set('paymentId', j.data.paymentId);",
+									"pm.collectionVariables.set('clientSecret', j.data.clientSecret || '');",
+									"var cs = pm.collectionVariables.get('clientSecret');",
+									"if (cs && cs.indexOf('_secret_') > -1) { pm.collectionVariables.set('paymentIntentId', cs.split('_secret_')[0]); }"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /payment/create (again - idempotent)",
+					"description": "Re-running create should reuse the existing payment record.",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{patientToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"method\": \"STRIPE\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/payment/create"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var j = pm.response.json();",
+									"pm.test('same payment id', () => pm.expect(j.data.paymentId).to.eql(pm.collectionVariables.get('paymentId')));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /payment/confirm",
+					"description": "Only succeeds when the Stripe PaymentIntent has status 'succeeded'. Complete the card payment first (Stripe test card 4242 4242 4242 4242 via Stripe.js) OR simulate via Stripe CLI:\n  stripe listen --forward-to localhost:5000/api/v1/payment/webhook\n  stripe trigger payment_intent.succeeded",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{patientToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"paymentIntentId\": \"{{paymentIntentId}}\",\n  \"tripId\": \"{{tripId}}\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/payment/confirm"
+					}
+				}
+			]
+		},
+		{
+			"name": "9 - Admin - Dashboard & Reports",
+			"item": [
+				{
+					"name": "GET /admin/dashboard/stats",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/dashboard/stats"
+					}
+				},
+				{
+					"name": "GET /admin/reports/trips?status=COMPLETED",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/reports/trips?status=COMPLETED"
+					}
+				},
+				{
+					"name": "GET /admin/reports/revenue",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/reports/revenue"
+					}
+				},
+				{
+					"name": "GET /admin/trips?page=1&limit=10",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+						"url": "{{base_url}}/admin/trips?page=1&limit=10"
+					}
+				}
+			]
+		},
+		{
+			"name": "10 - Negative / RBAC Tests",
+			"item": [
+				{
+					"name": "Patient token on /admin/trips (expect 403)",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{patientToken}}" }],
+						"url": "{{base_url}}/admin/trips"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('403', () => pm.expect(pm.response.code).to.eql(403));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Driver token on /patient/emergency-requests (expect 403)",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+						"url": "{{base_url}}/patient/emergency-requests"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('403', () => pm.expect(pm.response.code).to.eql(403));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "No token on /patient/emergency-requests (expect 401)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/patient/emergency-requests"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('401', () => pm.expect(pm.response.code).to.eql(401));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Create request with invalid body (expect 400)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{patientToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/patient/emergency-requests"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('400', () => pm.expect(pm.response.code).to.eql(400));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Duplicate patient email (expect 4xx)",
+					"description": "Register the same email again. Expected either 400 or 409.",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Nadia Rahman\",\n  \"email\": \"patient1@test.com\",\n  \"password\": \"Pass@1234\",\n  \"patient\": {\n    \"contactNumber\": \"01712345678\",\n    \"address\": \"Dhanmondi 27, Dhaka\"\n  }\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/auth/register/patient"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('4xx', () => pm.expect(pm.response.code).to.be.at.least(400));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Skip status to COMPLETED (expect 400)",
+					"description": "Negative test: jump straight to COMPLETED. Run this only on a fresh ASSIGNED/ACCEPTED trip (create a second request + assign first) because the main trip is already COMPLETED.",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{driverToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"COMPLETED\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{base_url}}/driver/trips/{{tripId}}/status"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('400', () => pm.expect(pm.response.code).to.eql(400));"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

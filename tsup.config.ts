@@ -1,31 +1,27 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-    entry: ["src/server.ts"],
+	entry: ["src/server.ts", "src/app.ts"],
 
-    format: ["esm", "cjs"], // Keep this as ESM
+	format: ["esm"], // ESM only — avoids import.meta breakage in the generated Prisma client
 
-    target: "esnext",
+	target: "esnext",
 
-    outDir: "dist",
+	outDir: "dist",
 
-    clean: true,
+	clean: true,
 
-    bundle: true,
+	bundle: true,
 
-    splitting: false,
+	splitting: false,
 
-    sourcemap: true,
+	sourcemap: true,
 
-    // Add this banner to shim require() for CJS dependencies
-
-    banner: {
-        js: `
-
+	// Add this banner to shim require() for CJS dependencies
+	banner: {
+		js: `
    import { createRequire } from 'module';
-
    const require = createRequire(import.meta.url);
-
   `,
-    },
+	},
 });
