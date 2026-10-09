@@ -14,6 +14,13 @@ import type {
 } from "./payment.interface";
 import { markTripPaid } from "./payment.utils";
 
+const REUSABLE_INTENT_STATUSES: string[] = [
+	"requires_payment_method",
+	"requires_confirmation",
+	"requires_action",
+	"processing",
+];
+
 const getOwnedCompletedTrip = async (userId: string, tripId: string) => {
 	const trip = await prisma.emergencyRequest.findUnique({
 		where: { id: tripId },
@@ -88,19 +95,32 @@ const createPaymentIntent = async (
 	}
 
 	if (method === PaymentMethod.STRIPE) {
-		const paymentIntent = await stripe.paymentIntents.create({
-			amount: Math.round(payment.amount * 100),
-			currency: "usd",
-			metadata: {
-				tripId,
-				userId,
-			},
-		});
+		const reusable = existingPayment?.stripePaymentIntentId
+			? await stripe.paymentIntents.retrieve(
+					existingPayment.stripePaymentIntentId,
+				)
+			: null;
 
-		await prisma.payment.update({
-			where: { id: payment.id },
-			data: { stripePaymentIntentId: paymentIntent.id },
-		});
+		let paymentIntent = reusable;
+
+		if (
+			!paymentIntent ||
+			!REUSABLE_INTENT_STATUSES.includes(paymentIntent.status)
+		) {
+			paymentIntent = await stripe.paymentIntents.create({
+				amount: Math.round(payment.amount * 100),
+				currency: "usd",
+				metadata: {
+					tripId,
+					userId,
+				},
+			});
+
+			await prisma.payment.update({
+				where: { id: payment.id },
+				data: { stripePaymentIntentId: paymentIntent.id },
+			});
+		}
 
 		return {
 			clientSecret: paymentIntent.client_secret,
